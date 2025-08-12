@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WATCH CLUB</title>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;700&display=swap" rel="stylesheet">
+<style>
+    body {
+        font-family: 'Red Hat Display', sans-serif;
+        margin: 0;
+        background-color: #f0f8ff;
+        color: #003366;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+    #login-screen, #app {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        text-align: center;
+        width: 350px;
+    }
+    img.logo {
+        width: 80px;
+        margin-bottom: 10px;
+    }
+    h1 {
+        font-weight: 700;
+        margin: 5px 0;
+    }
+    h2 {
+        font-weight: 400;
+        margin-bottom: 15px;
+    }
+    input {
+        padding: 10px;
+        margin: 8px 0;
+        width: 90%;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    button {
+        background-color: #003366;
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 14px;
+        margin-top: 10px;
+    }
+    button:hover {
+        background-color: #00509e;
+    }
+    #login-warning {
+        color: red;
+        font-size: 14px;
+        margin-top: 5px;
+    }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+    <img src="56ad5e56-f34c-4584-a23d-ca9defc9cc28.png" alt="Logo" class="logo">
+    <h1>WATCH CLUB</h1>
+    <h2>SCHOOL YEAR 2025 - 2026</h2>
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <div id="login-warning"></div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+    <img src="56ad5e56-f34c-4584-a23d-ca9defc9cc28.png" alt="Logo" class="logo">
+    <h1>WATCH CLUB</h1>
+    <h2>SCHOOL YEAR 2025 - 2026</h2>
+    <h3>Input Names Here</h3>
+    <textarea id="names" rows="5" placeholder="Enter names separated by line"></textarea><br>
+    <label>Number of Groups: <input type="number" id="numGroups" min="1" max="20" value="6"></label><br>
+    <button onclick="shuffleGroups()">Shuffle Groups</button>
+    <h3>Groupings (Output)</h3>
+    <div id="output"></div>
+    <h4>Project SEAL - Securing Exams through Assigned Layout</h4>
+    <button id="viewLogsBtn" onclick="viewLogs()" style="display:none;">View Login Logs</button>
+    <div id="logs" style="margin-top:10px;"></div>
+</div>
+
+<script>
+const ALLOWED_USERS = [
+    "WarrenPres","TungculVPres","PobleteSec","BaccayTreas","MalanaAud","TanPIO",
+    "MacatuggalPO","MagcalasPO","Florida7","Llopis7","Tejano8","Butay8","Garcia9",
+    "Carrrera10","Escobar10","Cebu11","Saguibo11","Martin12","Calica12","WATCHCLUBADMIN",
+    "TCSHSGuidance","TCSHSJHS","TCSHSSHS","PerezVisie"
+];
+const CORRECT_PASSWORD = "watchclub2025";
+const LOG_VIEWER = "WATCHCLUBADMIN"; // Only this user can view logs
+let currentUser = "";
+
+// Allow pressing Enter to submit password
+document.getElementById("password").addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+        checkPassword();
+    }
+});
+document.getElementById("username").addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+        document.getElementById("password").focus();
+    }
+});
+
+function checkPassword() {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+    const warning = document.getElementById("login-warning");
+
+    if (!username) {
+        warning.textContent = "Please enter your username.";
+        return;
+    }
+    if (!ALLOWED_USERS.includes(username)) {
+        warning.textContent = "Unauthorized username.";
+        return;
+    }
+    if (password === CORRECT_PASSWORD) {
+        currentUser = username;
+        const logs = JSON.parse(localStorage.getItem("loginLogs") || "[]");
+        logs.push({ username: username, time: new Date().toLocaleString() });
+        localStorage.setItem("loginLogs", JSON.stringify(logs));
+
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+
+        if (username === LOG_VIEWER) {
+            document.getElementById("viewLogsBtn").style.display = "block";
+        }
+    } else {
+        warning.textContent = "Incorrect password!";
+    }
+}
+
+function shuffleGroups() {
+    const names = document.getElementById("names").value.trim().split("\n").filter(n => n);
+    const numGroups = parseInt(document.getElementById("numGroups").value);
+
+    if (names.length > 200) {
+        alert("Maximum of 200 names allowed!");
+        return;
+    }
+    if (numGroups < 1) {
+        alert("Number of groups must be at least 1.");
+        return;
+    }
+
+    // Shuffle
+    for (let i = names.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [names[i], names[j]] = [names[j], names[i]];
+    }
+
+    // Assign to groups
+    let groups = Array.from({ length: numGroups }, () => []);
+    names.forEach((name, index) => {
+        groups[index % numGroups].push(name);
+    });
+
+    // Output
+    let outputHTML = "";
+    groups.forEach((group, i) => {
+        outputHTML += `<strong>Group ${i+1}</strong><br>${group.join("<br>")}<br><br>`;
+    });
+    document.getElementById("output").innerHTML = outputHTML;
+}
+
+function viewLogs() {
+    if (currentUser !== LOG_VIEWER) {
+        alert("You are not authorized to view logs.");
+        return;
+    }
+    const logs = JSON.parse(localStorage.getItem("loginLogs") || "[]");
+    if (logs.length === 0) {
+        document.getElementById("logs").innerHTML = "No login logs found.";
+        return;
+    }
+    let logHTML = "<strong>Login Logs:</strong><br>";
+    logs.forEach(log => {
+        logHTML += `${log.username} - ${log.time}<br>`;
+    });
+    document.getElementById("logs").innerHTML = logHTML;
+}
+</script>
+
+</body>
+</html>
