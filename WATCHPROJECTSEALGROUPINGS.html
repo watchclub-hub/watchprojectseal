@@ -14,15 +14,18 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 100vh;
+        min-height: 100vh;
+        padding: 20px;
+        box-sizing: border-box;
     }
-    #login-screen, #app {
+    #login-screen, #level-select, #year-select, #app {
         background: white;
         padding: 20px;
         border-radius: 12px;
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         text-align: center;
-        width: 350px;
+        width: 100%;
+        max-width: 1200px; /* Wide layout */
     }
     img.logo {
         width: 80px;
@@ -36,24 +39,22 @@
         font-weight: 400;
         margin-bottom: 15px;
     }
-    input {
+    input, textarea, button, select {
         padding: 10px;
         margin: 8px 0;
         width: 90%;
         border: 1px solid #ccc;
         border-radius: 6px;
         font-size: 14px;
+        font-family: 'Red Hat Display', sans-serif;
     }
     button {
         background-color: #003366;
         color: white;
-        padding: 10px;
         border: none;
-        border-radius: 6px;
         cursor: pointer;
-        width: 100%;
+        width: auto;
         font-size: 14px;
-        margin-top: 10px;
     }
     button:hover {
         background-color: #00509e;
@@ -62,6 +63,32 @@
         color: red;
         font-size: 14px;
         margin-top: 5px;
+    }
+    .sections-container {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .section-box {
+        background: #f9f9f9;
+        border-radius: 10px;
+        padding: 15px;
+        min-width: 220px;
+        flex: 1;
+    }
+    textarea {
+        width: 100%;
+        height: 80px;
+        resize: vertical;
+    }
+    table {
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    th, td {
+        border: 1px solid #ccc;
+        padding: 5px 10px;
     }
 </style>
 </head>
@@ -74,24 +101,24 @@
     <h2>SCHOOL YEAR 2025 - 2026</h2>
     <input type="text" id="username" placeholder="Username">
     <input type="password" id="password" placeholder="Password">
+    <button onclick="checkPassword()">Login</button>
     <div id="login-warning"></div>
 </div>
 
-<!-- MAIN APP -->
-<div id="app" style="display:none;">
-    <img src="56ad5e56-f34c-4584-a23d-ca9defc9cc28.png" alt="Logo" class="logo">
-    <h1>WATCH CLUB</h1>
-    <h2>SCHOOL YEAR 2025 - 2026</h2>
-    <h3>Input Names Here</h3>
-    <textarea id="names" rows="5" placeholder="Enter names separated by line"></textarea><br>
-    <label>Number of Groups: <input type="number" id="numGroups" min="1" max="20" value="6"></label><br>
-    <button onclick="shuffleGroups()">Shuffle Groups</button>
-    <h3>Groupings (Output)</h3>
-    <div id="output"></div>
-    <h4>Project SEAL - Securing Exams through Assigned Layout</h4>
-    <button id="viewLogsBtn" onclick="viewLogs()" style="display:none;">View Login Logs</button>
-    <div id="logs" style="margin-top:10px;"></div>
+<!-- DIVISION SELECT -->
+<div id="level-select" style="display:none;">
+    <h2>Select Division</h2>
+    <button onclick="chooseDivision('JHS')">Junior HS</button>
+    <button onclick="chooseDivision('SHS')">Senior HS</button>
 </div>
+
+<!-- YEAR SELECT -->
+<div id="year-select" style="display:none;">
+    <div id="year-options"></div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;"></div>
 
 <script>
 const ALLOWED_USERS = [
@@ -101,19 +128,29 @@ const ALLOWED_USERS = [
     "TCSHSGuidance","TCSHSJHS","TCSHSSHS","PerezVisie"
 ];
 const CORRECT_PASSWORD = "watchclub2025";
-const LOG_VIEWER = "WATCHCLUBADMIN"; // Only this user can view logs
 let currentUser = "";
+let selectedDivision = "";
+let selectedGrade = "";
 
-// Allow pressing Enter to submit password
-document.getElementById("password").addEventListener("keydown", function(event) {
-    if (event.key === "Enter") {
-        checkPassword();
+const sectionsData = {
+    JHS: {
+        7: ["Archimedes", "Bernoulli", "Joule", "Galileo"],
+        8: ["Fermat", "Descartes", "Euclid", "Pythagoras"],
+        9: ["Dalton", "Lavoisier", "Moseley", "Pascal"],
+        10: ["Curie", "Einstein", "Faraday", "Newton"]
+    },
+    SHS: {
+        11: ["Aristotle", "Democritus", "Socrates"],
+        12: ["Da Vinci", "Mendeleev", "Vesalius"]
     }
+};
+
+// Login handlers
+document.getElementById("password").addEventListener("keydown", function(event) {
+    if (event.key === "Enter") checkPassword();
 });
 document.getElementById("username").addEventListener("keydown", function(event) {
-    if (event.key === "Enter") {
-        document.getElementById("password").focus();
-    }
+    if (event.key === "Enter") document.getElementById("password").focus();
 });
 
 function checkPassword() {
@@ -131,69 +168,92 @@ function checkPassword() {
     }
     if (password === CORRECT_PASSWORD) {
         currentUser = username;
-        const logs = JSON.parse(localStorage.getItem("loginLogs") || "[]");
-        logs.push({ username: username, time: new Date().toLocaleString() });
-        localStorage.setItem("loginLogs", JSON.stringify(logs));
-
         document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-
-        if (username === LOG_VIEWER) {
-            document.getElementById("viewLogsBtn").style.display = "block";
-        }
+        document.getElementById('level-select').style.display = 'block';
     } else {
         warning.textContent = "Incorrect password!";
     }
 }
 
-function shuffleGroups() {
-    const names = document.getElementById("names").value.trim().split("\n").filter(n => n);
-    const numGroups = parseInt(document.getElementById("numGroups").value);
-
-    if (names.length > 200) {
-        alert("Maximum of 200 names allowed!");
-        return;
-    }
-    if (numGroups < 1) {
-        alert("Number of groups must be at least 1.");
-        return;
-    }
-
-    // Shuffle
-    for (let i = names.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [names[i], names[j]] = [names[j], names[i]];
-    }
-
-    // Assign to groups
-    let groups = Array.from({ length: numGroups }, () => []);
-    names.forEach((name, index) => {
-        groups[index % numGroups].push(name);
+function chooseDivision(division) {
+    selectedDivision = division;
+    let html = `<h2>Select Year Level (${division})</h2>`;
+    Object.keys(sectionsData[division]).forEach(grade => {
+        html += `<button onclick="chooseYear(${grade})">Grade ${grade}</button><br>`;
     });
-
-    // Output
-    let outputHTML = "";
-    groups.forEach((group, i) => {
-        outputHTML += `<strong>Group ${i+1}</strong><br>${group.join("<br>")}<br><br>`;
-    });
-    document.getElementById("output").innerHTML = outputHTML;
+    document.getElementById('year-options').innerHTML = html;
+    document.getElementById('level-select').style.display = 'none';
+    document.getElementById('year-select').style.display = 'block';
 }
 
-function viewLogs() {
-    if (currentUser !== LOG_VIEWER) {
-        alert("You are not authorized to view logs.");
-        return;
-    }
-    const logs = JSON.parse(localStorage.getItem("loginLogs") || "[]");
-    if (logs.length === 0) {
-        document.getElementById("logs").innerHTML = "No login logs found.";
-        return;
-    }
-    let logHTML = "<strong>Login Logs:</strong><br>";
-    logs.forEach(log => {
-        logHTML += `${log.username} - ${log.time}<br>`;
+function chooseYear(grade) {
+    selectedGrade = grade;
+    const sections = sectionsData[selectedDivision][grade];
+    let html = `<h2>Grade ${grade} Sections</h2><div class="sections-container">`;
+    sections.forEach(sec => {
+        html += `
+        <div class="section-box">
+            <h3>${sec}</h3>
+            <textarea id="${sec}-boys" placeholder="${sec} Boys"></textarea>
+            <textarea id="${sec}-girls" placeholder="${sec} Girls"></textarea>
+        </div>`;
     });
-    document.getElementById("logs").innerHTML = logHTML;
+    html += `</div>
+    <label>Number of Batches: <input type="number" id="numBatches" min="1" value="2"></label><br>
+    <button onclick="shuffleBySections()">Shuffle</button>
+    <div id="output"></div>`;
+    document.getElementById('app').innerHTML = html;
+    document.getElementById('year-select').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+}
+
+function shuffleBySections() {
+    const sections = sectionsData[selectedDivision][selectedGrade];
+    const numBatches = parseInt(document.getElementById("numBatches").value);
+
+    if (numBatches < 1) {
+        alert("Invalid number of batches.");
+        return;
+    }
+
+    let batches = Array.from({ length: numBatches }, () => []);
+
+    sections.forEach(sec => {
+        let boys = document.getElementById(`${sec}-boys`).value.trim().split("\n").filter(n => n);
+        let girls = document.getElementById(`${sec}-girls`).value.trim().split("\n").filter(n => n);
+
+        let sectionStudents = [...boys.map(name => ({ name, section: sec })), 
+                                ...girls.map(name => ({ name, section: sec }))];
+
+        // Shuffle students
+        for (let i = sectionStudents.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [sectionStudents[i], sectionStudents[j]] = [sectionStudents[j], sectionStudents[i]];
+        }
+
+        const baseSize = Math.floor(sectionStudents.length / numBatches);
+        let remainder = sectionStudents.length % numBatches;
+        let index = 0;
+
+        for (let b = 0; b < numBatches; b++) {
+            let size = baseSize + (remainder > 0 ? 1 : 0);
+            batches[b].push(...sectionStudents.slice(index, index + size));
+            index += size;
+            if (remainder > 0) remainder--;
+        }
+    });
+
+    let html = "";
+    batches.forEach((batch, idx) => {
+        html += `<h3>Batch ${idx + 1}</h3>
+                 <table>
+                    <tr><th>Name</th><th>Section</th></tr>`;
+        batch.forEach(student => {
+            html += `<tr><td>${student.name}</td><td>${student.section}</td></tr>`;
+        });
+        html += `</table><br>`;
+    });
+    document.getElementById("output").innerHTML = html;
 }
 </script>
 
